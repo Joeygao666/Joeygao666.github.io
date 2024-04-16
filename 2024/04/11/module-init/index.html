@@ -1,0 +1,454 @@
+<!DOCTYPE html>
+<html>
+  <head>
+  <meta http-equiv="content-type" content="text/html; charset=utf-8">
+  <meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0" name="viewport">
+  <meta name="description" content="yanm1ng&#39;s blog">
+  <meta name="keyword" content="hexo-theme, vuejs">
+  
+    <link rel="shortcut icon" href="/css/images/logo.png">
+  
+  <title>
+    
+      Linux | 驱动加载流程，module_init背后的故事 | Jooooooooey
+    
+  </title>
+  <link href="//cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css" rel="stylesheet">
+  <link href="//cdnjs.cloudflare.com/ajax/libs/nprogress/0.2.0/nprogress.min.css" rel="stylesheet">
+  <link href="//cdnjs.cloudflare.com/ajax/libs/highlight.js/9.12.0/styles/tomorrow.min.css" rel="stylesheet">
+  
+<link rel="stylesheet" href="/css/style.css">
+
+  
+  <script src="//cdnjs.cloudflare.com/ajax/libs/jquery/3.2.1/jquery.min.js"></script>
+  <script src="//cdnjs.cloudflare.com/ajax/libs/geopattern/1.2.3/js/geopattern.min.js"></script>
+  <script src="//cdnjs.cloudflare.com/ajax/libs/nprogress/0.2.0/nprogress.min.js"></script>
+  
+    
+<script src="/js/qrious.js"></script>
+
+  
+  
+  
+  
+    <!-- MathJax support START -->
+    <script type="text/x-mathjax-config">
+      MathJax.Hub.Config({
+        tex2jax: {
+          inlineMath: [ ['$','$'], ["\\(","\\)"]  ],
+          processEscapes: true,
+          skipTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code']
+        }
+      });
+    </script>
+
+    <script type="text/x-mathjax-config">
+      MathJax.Hub.Queue(function() {
+        var all = MathJax.Hub.getAllJax(), i;
+        for (i=0; i < all.length; i += 1) {
+          all[i].SourceElement().parentNode.className += ' has-jax';
+        }
+      });
+    </script>
+    <script type="text/javascript" src="//cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <!-- MathJax support END -->
+  
+
+
+  
+  
+    
+<script src="/js/local-search.js"></script>
+
+
+<meta name="generator" content="Hexo 7.1.1"></head>
+<div class="wechat-share">
+  <img src="/css/images/logo.png" />
+</div>
+  <body>
+    <header class="header fixed-header">
+  <div class="header-container">
+    <a class="home-link" href="/">
+      <div class="logo"></div>
+      <span>Jooooooooey</span>
+    </a>
+    <ul class="right-list">
+      
+        <li class="list-item">
+          
+            <a href="/" class="item-link">Home</a>
+          
+        </li>
+      
+        <li class="list-item">
+          
+            <a href="/series/" class="item-link">Series</a>
+          
+        </li>
+      
+        <li class="list-item">
+          
+            <a href="/tags/" class="item-link">Tags</a>
+          
+        </li>
+      
+        <li class="list-item">
+          
+            <a href="/archives/" class="item-link">Archives</a>
+          
+        </li>
+      
+        <li class="list-item">
+          
+            <a href="/project/" class="item-link">Projects</a>
+          
+        </li>
+      
+        <li class="list-item">
+          
+            <a href="/about/" class="item-link">About</a>
+          
+        </li>
+      
+      
+        <li class="menu-item menu-item-search right-list">
+    <a role="button" class="popup-trigger">
+        <i class="fa fa-search fa-fw"></i>
+    </a>
+</li>
+      
+    </ul>
+    <div class="menu">
+      <span class="icon-bar"></span>
+      <span class="icon-bar"></span>
+      <span class="icon-bar"></span>
+    </div>
+    <div class="menu-mask">
+      <ul class="menu-list">
+        
+          <li class="menu-item">
+            
+              <a href="/" class="menu-link">Home</a>
+            
+          </li>
+        
+          <li class="menu-item">
+            
+              <a href="/series/" class="menu-link">Series</a>
+            
+          </li>
+        
+          <li class="menu-item">
+            
+              <a href="/tags/" class="menu-link">Tags</a>
+            
+          </li>
+        
+          <li class="menu-item">
+            
+              <a href="/archives/" class="menu-link">Archives</a>
+            
+          </li>
+        
+          <li class="menu-item">
+            
+              <a href="/project/" class="menu-link">Projects</a>
+            
+          </li>
+        
+          <li class="menu-item">
+            
+              <a href="/about/" class="menu-link">About</a>
+            
+          </li>
+        
+      </ul>
+    </div>
+    
+      <div class="search-pop-overlay">
+    <div class="popup search-popup">
+        <div class="search-header">
+            <span class="search-icon">
+                <i class="fa fa-search"></i>
+            </span>
+            <div class="search-input-container">
+                <input autocomplete="off" autocapitalize="off"
+                    placeholder="Please enter your keyword(s) to search." spellcheck="false"
+                    type="search" class="search-input">
+            </div>
+            <span class="popup-btn-close">
+                <i class="fa fa-times-circle"></i>
+            </span>
+        </div>
+        <div id="search-result">
+            <div id="no-result">
+                <i class="fa fa-spinner fa-pulse fa-5x fa-fw"></i>
+            </div>
+        </div>
+    </div>
+</div>
+    
+  </div>
+</header>
+
+    <div id="article-banner">
+  <h2>Linux | 驱动加载流程，module_init背后的故事</h2>
+  <p class="post-date">2024-04-11</p>
+  <div class="arrow-down">
+    <a href="javascript:;"></a>
+  </div>
+</div>
+<main class="app-body flex-box">
+  <!-- Article START -->
+  <article class="post-article">
+    <section class="markdown-content"><p>本文谈论的内核代码，内核版本4.0以上</p>
+<h3 id="驱动的起点-前言"><a href="#驱动的起点-前言" class="headerlink" title="驱动的起点|前言"></a>驱动的起点|前言</h3><pre><code>驱动开发工程师都知道module_init函数
+在编写一个驱动的时候，大部分情况都是从module_init函数开始
+通过在module_init调用驱动的init函数
+在驱动的init函数中，进行device结构体注册、driver结构体绑定、驱动设备的硬件初始化、其他io、file...结构体绑定
+</code></pre>
+<h3 id="module-init"><a href="#module-init" class="headerlink" title="module_init"></a>module_init</h3><h4 id="使用module-init注册驱动的起点"><a href="#使用module-init注册驱动的起点" class="headerlink" title="使用module_init注册驱动的起点"></a>使用module_init注册驱动的起点</h4><p>module_init是一个宏，定义在include&#x2F;linux&#x2F;module.h中<br><code>    #define module_init(x) __initcall(x);</code></p>
+<p>__initcall(x)也是一个宏，在文件include&#x2F;linux&#x2F;init.h中定义：<br><code>#define __initcall(fn) device_initcall(fn)</code></p>
+<p><img src="/image/Image.png" alt="initcall"></p>
+<p><strong>结合上面两个宏，module_init的本质，就是将驱动中module_init(x)传入的函数x<br>定义成__define_initcall(x,6)</strong></p>
+<h4 id="其他注册驱动的宏"><a href="#其他注册驱动的宏" class="headerlink" title="其他注册驱动的宏"></a>其他注册驱动的宏</h4><p>有一些驱动，不使用module_init作为初始化起点<br>比如平台类驱动，使用module_platform_driver(x)<br>混杂类设备驱动，使用module_misc_device(x)<br>i2c总线设备驱动，使用module_i2c_driver(x)<br>但是这些宏，本质上最后还是通过几次宏的传递，调用了module_init</p>
+<p>下面以平台设备驱动注册驱动时使用的module_platform_driver举例</p>
+<p>定义在include&#x2F;linux&#x2F;device.h下<br>#define module_platform_driver(__platform_driver) <br> module_driver(__platform_driver, platform_driver_register, <br>   platform_driver_unregister)</p>
+<p>比如misc混杂设备<br>#define module_misc_device(__misc_device) <br>    module_driver(__misc_device, misc_register, misc_deregister)</p>
+<p>module_driver的定义<br><img src="/image/Image2.png" alt="initcall"></p>
+<p>所以所有的驱动，编译进内核的驱动，本质上都是通过<br><strong>module_init</strong>这个函数注册进内核</p>
+<h3 id="define-initcall"><a href="#define-initcall" class="headerlink" title="__define_initcall"></a>__define_initcall</h3><p>通过上面的分析可知，绝大部分的驱动，初始化的起点函数x<br>最后都演变成__define_initcall(x,6)<br>那么define_initcall是什么作用<br><img src="/image/Image3.png" alt="initcall"></p>
+<p>综上，当使用module_init注册一个驱动函数时，比如</p>
+<p>module_init(test_init);</p>
+<p>通过几个宏的嵌套，最终变成<br><code>static initcall_t __initcall_test_init6  __attribute__((__section__(&quot;.initcall6.init&quot;))) = test_init;</code></p>
+<p><strong>上面一行的代码，意思是指示编译器<br>把初始化函数地址保存到名为”.initcall6.init” 的数据段中。</strong></p>
+<h3 id="驱动的初始化函数如何被执行"><a href="#驱动的初始化函数如何被执行" class="headerlink" title="驱动的初始化函数如何被执行"></a>驱动的初始化函数如何被执行</h3><p>接上文，所有的驱动函数的起点函数，被编译到”.initcall6.init” 的数据段中之后<br>什么时候会被执行呢</p>
+<p>答案是，在内核启动过程中,内核的起点，init&#x2F;main.c文件中</p>
+<p>内核的起点函数 start_kernel<br>进过一系列初始化，硬件设置，cpu设置，最后一步调用rest_init</p>
+<p>rest_init中调用kernel_thread创建内核线程，也就是著名的1号进程kernel_init<br>进程号pid&#x3D;1的进程</p>
+<p>kernel_init线程<br>kernel_init_freeable</p>
+<p>do_basic_setup</p>
+<p>do_initcalls</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">static void __init do_initcalls(void)</span><br><span class="line">&#123;</span><br><span class="line">    int level;</span><br><span class="line">    for (level = 0; level &lt; ARRAY_SIZE(initcall_levels) - 1; level++)</span><br><span class="line">        do_initcall_level(level);</span><br><span class="line">&#125;</span><br><span class="line"></span><br></pre></td></tr></table></figure>
+
+<p>这个函数中的核心，就是do_initcall_level，他负责遍历initcall数据段中排列的各个初始化函数</p>
+<p>至此，内核通过module_init注册进内核的初始化代码，将被按编译顺序依次遍历执行</p>
+<h3 id="总结"><a href="#总结" class="headerlink" title="总结"></a>总结</h3><ol>
+<li>驱动的入口函数X，基本上最后都是使用module_init(x)</li>
+<li>在内核编译阶段，被编译到initcall数据段</li>
+<li>内核启动时，在1号进程中通过do_initcalls函数去遍历initcall数据段上的函数</li>
+</ol>
+</section>
+    <!-- Tags START -->
+    
+      <div class="tags">
+        <span>Tags:</span>
+        
+  <a href="/tags#Linux BSP" >
+    <span class="tag-code">Linux BSP</span>
+  </a>
+
+  <a href="/tags#Linux Driver" >
+    <span class="tag-code">Linux Driver</span>
+  </a>
+
+      </div>
+    
+    <!-- Tags END -->
+    <!-- NAV START -->
+    
+  <div class="nav-container">
+    <!-- reverse left and right to put prev and next in a more logic postition -->
+    
+      <a class="nav-left" href="/2024/04/10/hello-world/">
+        <span class="nav-arrow">← </span>
+        
+          Come here you little noob !
+        
+      </a>
+    
+    
+      <a class="nav-right" href="/2024/04/11/My-New-Post/">
+        
+          My New Post
+        
+        <span class="nav-arrow"> →</span>
+      </a>
+    
+  </div>
+
+    <!-- NAV END -->
+    <!-- 打赏 START -->
+    
+      <div class="money-like">
+        <div class="reward-btn">
+          赏
+          <span class="money-code">
+            <span class="alipay-code">
+              <div class="code-image"></div>
+              <b>使用支付宝打赏</b>
+            </span>
+            <span class="wechat-code">
+              <div class="code-image"></div>
+              <b>使用微信打赏</b>
+            </span>
+          </span>
+        </div>
+        <p class="notice">若你觉得我的文章对你有帮助，欢迎点击上方按钮对我打赏</p>
+      </div>
+    
+    <!-- 打赏 END -->
+    <!-- 二维码 START -->
+    
+      <div class="qrcode">
+        <canvas id="share-qrcode"></canvas>
+        <p class="notice">扫描二维码，分享此文章</p>
+      </div>
+    
+    <!-- 二维码 END -->
+    
+      <!-- Utterances START -->
+      <div id="utterances"></div>
+      <script src="https://utteranc.es/client.js"
+        repo=""
+        issue-term="pathname"
+        theme="github-light"
+        crossorigin="anonymous"
+        async></script>    
+      <!-- Utterances END -->
+    
+  </article>
+  <!-- Article END -->
+  <!-- Catalog START -->
+  
+    <aside class="catalog-container">
+  <div class="toc-main">
+    <strong class="toc-title">Catalog</strong>
+    
+      <ol class="toc-nav"><li class="toc-nav-item toc-nav-level-3"><a class="toc-nav-link" href="#%E9%A9%B1%E5%8A%A8%E7%9A%84%E8%B5%B7%E7%82%B9-%E5%89%8D%E8%A8%80"><span class="toc-nav-text">驱动的起点|前言</span></a></li><li class="toc-nav-item toc-nav-level-3"><a class="toc-nav-link" href="#module-init"><span class="toc-nav-text">module_init</span></a><ol class="toc-nav-child"><li class="toc-nav-item toc-nav-level-4"><a class="toc-nav-link" href="#%E4%BD%BF%E7%94%A8module-init%E6%B3%A8%E5%86%8C%E9%A9%B1%E5%8A%A8%E7%9A%84%E8%B5%B7%E7%82%B9"><span class="toc-nav-text">使用module_init注册驱动的起点</span></a></li><li class="toc-nav-item toc-nav-level-4"><a class="toc-nav-link" href="#%E5%85%B6%E4%BB%96%E6%B3%A8%E5%86%8C%E9%A9%B1%E5%8A%A8%E7%9A%84%E5%AE%8F"><span class="toc-nav-text">其他注册驱动的宏</span></a></li></ol></li><li class="toc-nav-item toc-nav-level-3"><a class="toc-nav-link" href="#define-initcall"><span class="toc-nav-text">__define_initcall</span></a></li><li class="toc-nav-item toc-nav-level-3"><a class="toc-nav-link" href="#%E9%A9%B1%E5%8A%A8%E7%9A%84%E5%88%9D%E5%A7%8B%E5%8C%96%E5%87%BD%E6%95%B0%E5%A6%82%E4%BD%95%E8%A2%AB%E6%89%A7%E8%A1%8C"><span class="toc-nav-text">驱动的初始化函数如何被执行</span></a></li><li class="toc-nav-item toc-nav-level-3"><a class="toc-nav-link" href="#%E6%80%BB%E7%BB%93"><span class="toc-nav-text">总结</span></a></li></ol>
+    
+  </div>
+</aside>
+  
+  <!-- Catalog END -->
+</main>
+
+<script>
+  (function () {
+    var url = 'https://joeygao666.github.io/2024/04/11/module-init/';
+    var banner = ''
+    if (banner !== '' && banner !== 'undefined' && banner !== 'null') {
+      $('#article-banner').css({
+        'background-image': 'url(' + banner + ')'
+      })
+    } else {
+      $('#article-banner').geopattern(url)
+    }
+    $('.header').removeClass('fixed-header')
+
+    // error image
+    $(".markdown-content img").on('error', function() {
+      $(this).attr('src', '/css/images/error_icon.png')
+      $(this).css({
+        'cursor': 'default'
+      })
+    })
+
+    // zoom image
+    $(".markdown-content img").on('click', function() {
+      var src = $(this).attr('src')
+      if (src !== '/css/images/error_icon.png') {
+        var imageW = $(this).width()
+        var imageH = $(this).height()
+
+        var zoom = ($(window).width() * 0.95 / imageW).toFixed(2)
+        zoom = zoom < 1 ? 1 : zoom
+        zoom = zoom > 2 ? 2 : zoom
+        var transY = (($(window).height() - imageH) / 2).toFixed(2)
+
+        $('body').append('<div class="image-view-wrap"><div class="image-view-inner"><img src="'+ src +'" /></div></div>')
+        $('.image-view-wrap').addClass('wrap-active')
+        $('.image-view-wrap img').css({
+          'width': `${imageW}`,
+          'transform': `translate3d(0, ${transY}px, 0) scale3d(${zoom}, ${zoom}, 1)`
+        })
+        $('html').css('overflow', 'hidden')
+
+        $('.image-view-wrap').on('click', function() {
+          $(this).remove()
+          $('html').attr('style', '')
+        })
+      }
+    })
+  })();
+</script>
+
+
+  <script>
+    var qr = new QRious({
+      element: document.getElementById('share-qrcode'),
+      value: document.location.href
+    });
+  </script>
+
+
+
+
+
+
+    <div class="scroll-top">
+  <span class="arrow-icon"></span>
+</div>
+    <footer class="app-footer">
+  <p class="copyright">
+    &copy; 2024 | Proudly powered by <a href="https://hexo.io" target="_blank">Hexo</a>
+    <br>
+    Theme by <a target="_blank" rel="noopener" href="https://github.com/yanm1ng">yanm1ng</a>
+    
+  </p>
+</footer>
+
+<script>
+  function async(u, c) {
+    var d = document, t = 'script',
+      o = d.createElement(t),
+      s = d.getElementsByTagName(t)[0];
+    o.src = u;
+    if (c) { o.addEventListener('load', function (e) { c(null, e); }, false); }
+    s.parentNode.insertBefore(o, s);
+  }
+</script>
+<script>
+  async("//cdnjs.cloudflare.com/ajax/libs/fastclick/1.0.6/fastclick.min.js", function(){
+    FastClick.attach(document.body);
+  })
+</script>
+
+<script>
+  var hasLine = 'true';
+  async("//cdnjs.cloudflare.com/ajax/libs/highlight.js/9.12.0/highlight.min.js", function(){
+    $('figure pre').each(function(i, block) {
+      var figure = $(this).parents('figure');
+      if (hasLine === 'false') {
+        figure.find('.gutter').hide();
+      }
+      hljs.configure({useBR: true});
+      var lang = figure.attr('class').split(' ')[1] || 'code';
+      var codeHtml = $(this).html();
+      var codeTag = document.createElement('code');
+      codeTag.className = lang;
+      codeTag.innerHTML = codeHtml;
+      $(this).attr('class', '').empty().html(codeTag);
+      figure.attr('data-lang', lang.toUpperCase());
+      hljs.highlightBlock(block);
+    });
+  })
+</script>
+<!-- Baidu Tongji -->
+
+
+<script src="/js/script.js"></script>
+
+
+  </body>
+</html>
